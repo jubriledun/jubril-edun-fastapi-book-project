@@ -1,0 +1,31 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main  # Trigger when PR is merged into main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Deploy Application
+        run: |
+          # # SSH into the server and deploy
+          # ssh -o StrictHostKeyChecking=no ubuntu@your-server-ip << 'EOF'
+          #   cd /path/to/your/project
+          #   git pull origin main  # Get latest changes
+          #   docker compose down   # Stop existing containers (if using Docker)
+          #   docker compose up -d --build  # Rebuild and start containers
+          # EOF
