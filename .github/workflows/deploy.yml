@@ -1,32 +1,47 @@
-# name: Deploy FastAPI to AWS EC2
+name: Deploy FastAPI App
 
-# on:
-#   push:
-#     branches:
-#       - main
+on:
+  push:
+    branches:
+      - main
 
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
 
-#     steps:
-#       - name: Checkout Code
-#         uses: actions/checkout@v4
+    steps:
+      - name: Set up SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-#       - name: Set up SSH
-#         uses: webfactory/ssh-agent@v0.9.0
-#         with:
-#           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+      - name: Deploy to EC2
+        run: |
+          ssh ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e  # Exit immediately on error
+            
+            # Define working directory
+            APP_DIR="/home/ubuntu/app"
 
-#       - name: Deploy to EC2
-#         run: |
-#           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-#             cd /home/ubuntu/app
-#             git pull origin main
-#             docker stop fastapi-app || true
-#             docker rm fastapi-app || true
-#             docker build -t fastapi-app .
-#             docker run -d -p 8000:8000 --name fastapi-app fastapi-app
-#             sudo systemctl restart nginx
-#           EOF
+            # Clone repo if not exists, else pull latest changes
+            if [ ! -d "$APP_DIR/.git" ]; then
+              git clone git@github.com:your-username/your-repo.git $APP_DIR
+            fi
+            cd $APP_DIR
+            git pull origin main
+
+            # Stop and remove old container (if running)
+            docker stop fastapi-app || true
+            docker rm fastapi-app || true
+
+            # Build and run the new container
+            docker build -t fastapi-app .
+            docker run -d -p 8000:8000 --name fastapi-app fastapi-app
+
+            # Restart Nginx to apply any config changes
+            sudo systemctl restart nginx
+          EOF
 
